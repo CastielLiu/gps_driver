@@ -3,7 +3,7 @@
 <launch>
 	<arg name="file_name" default="path" />
 
-	<node name="record_path_node" pkg="nuogeng" type="record_path_node" output= "screen">
+	<node name="record_gps_node" pkg="nuogeng" type="record_gps_node" output= "screen">
 		<param name="file_path" value="$(find nuogeng)/data/"/>
 		<param name="file_name" value="$(arg file_name).txt"/>
 		<param name="sample_distance" value="0.1" />
