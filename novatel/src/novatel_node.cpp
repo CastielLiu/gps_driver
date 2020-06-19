@@ -761,7 +761,7 @@ protected:
     ROS_INFO_STREAM(name_ << ": ECEF Position Topic: " << ecefpos_topic_);
 
 // add by wendao     
-    nh_.param("inspvax_topic", inspvax_topic_, std::string("gps_inspvax"));
+    nh_.param("inspvax_topic", inspvax_topic_, std::string("/gps"));
     ROS_INFO_STREAM(name_ << ": GPS Inspvax Topic: " << inspvax_topic_);
     
     nh_.param("bestgnss_topic", bestgnss_topic_, std::string("best_gnss"));
