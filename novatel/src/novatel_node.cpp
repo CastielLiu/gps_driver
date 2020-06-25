@@ -113,93 +113,99 @@ public:
 
 
   void BestUtmHandler(UtmPosition &pos, double &timestamp) {
-    ROS_DEBUG("Received BestUtm");
-
+    //ROS_DEBUG("Received BestUtm");
     cur_utm_bestpos_ = pos;
-
-    sensor_msgs::NavSatFix sat_fix;
-    sat_fix.header.stamp = ros::Time::now();
-    sat_fix.header.frame_id = "/odom";
-
-    if (pos.position_type == NONE)
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-    else if ((pos.position_type == WAAS) || 
-             (pos.position_type == OMNISTAR) ||   
-             (pos.position_type == OMNISTAR_HP) || 
-             (pos.position_type == OMNISTAR_XP) || 
-             (pos.position_type == CDGPS))
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
-    else if ((pos.position_type == PSRDIFF) || 
-             (pos.position_type == NARROW_FLOAT) ||   
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == NARROW_INT) ||     
-             (pos.position_type == RTK_DIRECT_INS) ||     
-             (pos.position_type == INS_PSRDIFF) ||    
-             (pos.position_type == INS_RTKFLOAT) ||   
-             (pos.position_type == INS_RTKFIXED))
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
-     else 
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
-
-    if (pos.signals_used_mask & 0x30)
-      sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GLONASS;
-    else
-      sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
-
-    // TODO: convert positon to lat, long, alt to export (this is available from PSRPOS)
-
-    // TODO: add covariance
-    // covariance is east,north,up in row major form
-
-    sat_fix.position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
-
-    nav_sat_fix_publisher_.publish(sat_fix);
-
-    nav_msgs::Odometry cur_odom_;
-    cur_odom_.header.stamp = sat_fix.header.stamp;
-    cur_odom_.header.frame_id = "/odom";
-    cur_odom_.pose.pose.position.x = pos.easting;
-    cur_odom_.pose.pose.position.y = pos.northing;
-    cur_odom_.pose.pose.position.z = pos.height;
-    // covariance representation given in REP 103
-    //http://www.ros.org/reps/rep-0103.html#covariance-representation
-    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
-    // row major
-    cur_odom_.pose.covariance[0] = pos.easting_standard_deviation * pos.easting_standard_deviation;
-    cur_odom_.pose.covariance[7] = pos.northing_standard_deviation * pos.northing_standard_deviation;
-    cur_odom_.pose.covariance[14] = pos.height_standard_deviation * pos.height_standard_deviation;
-    // have no way of knowing roll and pitch with just GPS
-    cur_odom_.pose.covariance[21] = DBL_MAX;
-    cur_odom_.pose.covariance[28] = DBL_MAX;
-
-    // see if there is a recent velocity message
-    if ((cur_velocity_.header.gps_week==pos.header.gps_week) 
-         && (cur_velocity_.header.gps_millisecs==pos.header.gps_millisecs)) 
+    ros::Time stamp = ros::Time::now();
+    
+    if(nav_sat_fix_publisher_.getNumSubscribers())
     {
-      cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
-      cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
-      cur_odom_.twist.twist.linear.z=cur_velocity_.vertical_speed;
+		sensor_msgs::NavSatFix sat_fix;
+		sat_fix.header.stamp = stamp;
+		sat_fix.header.frame_id = "/odom";
 
-      cur_odom_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(
-          psi2theta(cur_velocity_.track_over_ground*degrees_to_radians));
+		if (pos.position_type == NONE)
+		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX; 
+		else if ((pos.position_type == WAAS) || 
+		         (pos.position_type == OMNISTAR) ||   
+		         (pos.position_type == OMNISTAR_HP) || 
+		         (pos.position_type == OMNISTAR_XP) || 
+		         (pos.position_type == CDGPS))
+		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;//星基增强
+		else if ((pos.position_type == PSRDIFF) || 
+		         (pos.position_type == NARROW_FLOAT) ||   
+		         (pos.position_type == WIDE_INT) ||     
+		         (pos.position_type == WIDE_INT) ||     
+		         (pos.position_type == NARROW_INT) ||     
+		         (pos.position_type == RTK_DIRECT_INS) ||     
+		         (pos.position_type == INS_PSRDIFF))
+		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;//地基增强
+		 else if((pos.position_type == INS_RTKFLOAT) ||
+		         (pos.position_type == INS_RTKFIXED))
+		  sat_fix.status.status = 10; //自定义状态,RTK
+		 else 
+		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
 
-      // if i have a fix, velocity std, dev is constant
-      if (cur_velocity_.position_type>NONE) {
-        // yaw covariance
-        double heading_std_dev=sigma_v/cur_velocity_.horizontal_speed;
-        cur_odom_.pose.covariance[35] = heading_std_dev * heading_std_dev;
-        // x and y velocity covariance
-        cur_odom_.twist.covariance[0] = sigma_v*sigma_v;
-        cur_odom_.twist.covariance[7] = sigma_v*sigma_v;
-      } else {
-        cur_odom_.pose.covariance[35] = DBL_MAX;
-        cur_odom_.twist.covariance[0] = DBL_MAX;
-        cur_odom_.twist.covariance[7] = DBL_MAX;
-      }
-    }
+		if (pos.signals_used_mask & 0x30)
+		  sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GLONASS;
+		else
+		  sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
 
-    bestutm_publisher_.publish(cur_odom_);
+		// TODO: convert positon to lat, long, alt to export (this is available from PSRPOS)
+
+		// TODO: add covariance
+		// covariance is east,north,up in row major form
+
+		sat_fix.position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+		nav_sat_fix_publisher_.publish(sat_fix);
+	}
+	
+	if(bestutm_publisher_.getNumSubscribers())
+	{
+		nav_msgs::Odometry cur_odom_;
+		cur_odom_.header.stamp = stamp;
+		cur_odom_.header.frame_id = "/odom";
+		cur_odom_.pose.pose.position.x = pos.easting;
+		cur_odom_.pose.pose.position.y = pos.northing;
+		cur_odom_.pose.pose.position.z = pos.height;
+		// covariance representation given in REP 103
+		//http://www.ros.org/reps/rep-0103.html#covariance-representation
+		// (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+		// row major
+		cur_odom_.pose.covariance[0] = pos.easting_standard_deviation * pos.easting_standard_deviation;
+		cur_odom_.pose.covariance[7] = pos.northing_standard_deviation * pos.northing_standard_deviation;
+		cur_odom_.pose.covariance[14] = pos.height_standard_deviation * pos.height_standard_deviation;
+		// have no way of knowing roll and pitch with just GPS
+		cur_odom_.pose.covariance[21] = DBL_MAX;
+		cur_odom_.pose.covariance[28] = DBL_MAX;
+
+		// see if there is a recent velocity message
+		if ((cur_velocity_.header.gps_week==pos.header.gps_week) 
+		     && (cur_velocity_.header.gps_millisecs==pos.header.gps_millisecs)) 
+		{
+		  cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
+		  cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
+		  cur_odom_.twist.twist.linear.z=cur_velocity_.vertical_speed;
+
+		  cur_odom_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(
+		      psi2theta(cur_velocity_.track_over_ground*degrees_to_radians));
+
+		  // if i have a fix, velocity std, dev is constant
+		  if (cur_velocity_.position_type>NONE) {
+		    // yaw covariance
+		    double heading_std_dev=sigma_v/cur_velocity_.horizontal_speed;
+		    cur_odom_.pose.covariance[35] = heading_std_dev * heading_std_dev;
+		    // x and y velocity covariance
+		    cur_odom_.twist.covariance[0] = sigma_v*sigma_v;
+		    cur_odom_.twist.covariance[7] = sigma_v*sigma_v;
+		  } else {
+		    cur_odom_.pose.covariance[35] = DBL_MAX;
+		    cur_odom_.twist.covariance[0] = DBL_MAX;
+		    cur_odom_.twist.covariance[7] = DBL_MAX;
+		  }
+		}
+
+		bestutm_publisher_.publish(cur_odom_);
+	}
   }
 
 
@@ -472,7 +478,7 @@ public:
   void RawMsgHandler(unsigned char *msg) {
     // ROS_INFO_STREAM("RAW RANGE MSG\n\tsizeof: " << sizeof(msg));
   }
-  
+
   inline double deg2rad(const double& deg)
   {
      return deg*M_PI/180.0;
@@ -480,41 +486,44 @@ public:
   
   void InspvaxHandler(Inspvax &inspvax,double timestamp)
   {
-	gps_msgs::Inspvax inspvax_msg;
-	inspvax_msg.header.stamp = ros::Time::now();
-	inspvax_msg.header.frame_id = "gps";
-	inspvax_msg.latitude = inspvax.latitude;
-	inspvax_msg.longitude = inspvax.longitude;
-	inspvax_msg.height = inspvax.height;
-	inspvax_msg.undulation = inspvax.undulation;
-	inspvax_msg.north_velocity = inspvax.north_velocity ;
-	inspvax_msg.east_velocity = inspvax.east_velocity ;
-	inspvax_msg.up_velocity = inspvax.up_velocity;
-	inspvax_msg.roll = inspvax.roll;
-	inspvax_msg.pitch = inspvax.pitch;
-	inspvax_msg.azimuth = inspvax.azimuth;
-	inspvax_msg.latitude_standard_deviation = inspvax.latitude_standard_deviation;
-	inspvax_msg.longitude_standard_deviation = inspvax.longitude_standard_deviation;
-	inspvax_msg.height_standard_deviation =  inspvax.height_standard_deviation;
-	inspvax_msg.northing_standard_deviation = inspvax.northing_standard_deviation;
-	inspvax_msg.easting_standard_deviation = inspvax.easting_standard_deviation;
-	inspvax_msg.uping_standard_deviation = inspvax.uping_standard_deviation;
-	inspvax_msg.roll_standard_deviation = inspvax.roll_standard_deviation;
-	inspvax_msg.pitch_standard_deviation =inspvax.pitch_standard_deviation ;
-	inspvax_msg.azimuth_standard_deviation = inspvax.azimuth_standard_deviation;
-	
-	inspvax_publisher_.publish(inspvax_msg);
-	
-	if(is_ll2utm_)
+	ros::Time stamp = ros::Time::now();
+	if(inspvax_publisher_.getNumSubscribers())
 	{
-		static nav_msgs::Odometry ll2utm_msg;
-		ll2utm_msg.header.stamp = inspvax_msg.header.stamp;
+		gps_msgs::Inspvax inspvax_msg;
+		inspvax_msg.header.stamp = stamp;
+		inspvax_msg.header.frame_id = "gps";
+		inspvax_msg.latitude = inspvax.latitude;
+		inspvax_msg.longitude = inspvax.longitude;
+		inspvax_msg.height = inspvax.height;
+		inspvax_msg.undulation = inspvax.undulation;
+		inspvax_msg.north_velocity = inspvax.north_velocity ;
+		inspvax_msg.east_velocity = inspvax.east_velocity ;
+		inspvax_msg.up_velocity = inspvax.up_velocity;
+		inspvax_msg.roll = inspvax.roll;
+		inspvax_msg.pitch = inspvax.pitch;
+		inspvax_msg.azimuth = inspvax.azimuth;
+		inspvax_msg.latitude_standard_deviation = inspvax.latitude_standard_deviation;
+		inspvax_msg.longitude_standard_deviation = inspvax.longitude_standard_deviation;
+		inspvax_msg.height_standard_deviation =  inspvax.height_standard_deviation;
+		inspvax_msg.northing_standard_deviation = inspvax.northing_standard_deviation;
+		inspvax_msg.easting_standard_deviation = inspvax.easting_standard_deviation;
+		inspvax_msg.uping_standard_deviation = inspvax.uping_standard_deviation;
+		inspvax_msg.roll_standard_deviation = inspvax.roll_standard_deviation;
+		inspvax_msg.pitch_standard_deviation =inspvax.pitch_standard_deviation ;
+		inspvax_msg.azimuth_standard_deviation = inspvax.azimuth_standard_deviation;
+		inspvax_publisher_.publish(inspvax_msg);
+	}
+	
+	if(ll2utm_publisher_.getNumSubscribers())
+	{
+		nav_msgs::Odometry ll2utm_msg;
+		ll2utm_msg.header.stamp = stamp;
 		ll2utm_msg.header.frame_id = "world";
 		
 		geographic_msgs::GeoPoint point;
-		point.latitude = inspvax_msg.latitude;
-		point.longitude = inspvax_msg.longitude;
-		point.altitude = inspvax_msg.height;
+		point.latitude = inspvax.latitude;
+		point.longitude = inspvax.longitude;
+		point.altitude = inspvax.height;
 		
 		geodesy::UTMPoint utm;
 		geodesy::fromMsg(point, utm);
@@ -523,18 +532,18 @@ public:
 		ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
-		Eigen::AngleAxisd rollAngle(deg2rad(inspvax_msg.roll), Eigen::Vector3d::UnitX());
-		Eigen::AngleAxisd yawAngle(-deg2rad(inspvax_msg.azimuth-90.0), Eigen::Vector3d::UnitZ());
-		Eigen::AngleAxisd pitchAngle(deg2rad(inspvax_msg.pitch), Eigen::Vector3d::UnitY());
+		Eigen::AngleAxisd rollAngle(deg2rad(inspvax.roll), Eigen::Vector3d::UnitX());
+		Eigen::AngleAxisd yawAngle(-deg2rad(inspvax.azimuth-90.0), Eigen::Vector3d::UnitZ());
+		Eigen::AngleAxisd pitchAngle(deg2rad(inspvax.pitch), Eigen::Vector3d::UnitY());
 		Eigen::Quaterniond q = rollAngle * yawAngle * pitchAngle;
 		
 		ll2utm_msg.pose.pose.orientation.x = q.x();
 		ll2utm_msg.pose.pose.orientation.y = q.y();
 		ll2utm_msg.pose.pose.orientation.z = q.z();
 		ll2utm_msg.pose.pose.orientation.w = q.w();
-		ll2utm_msg.pose.covariance[0] = deg2rad(inspvax_msg.azimuth);
-		ll2utm_msg.pose.covariance[1] = inspvax_msg.longitude;
-		ll2utm_msg.pose.covariance[2] = inspvax_msg.latitude;
+		ll2utm_msg.pose.covariance[0] = deg2rad(inspvax.azimuth);
+		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
+		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
 
 		ll2utm_publisher_.publish(ll2utm_msg);
 	}

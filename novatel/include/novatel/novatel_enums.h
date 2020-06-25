@@ -152,17 +152,17 @@ enum ResponseBit //!< Last bit (7) of MessageType struct
 enum PositionType
 {
     NONE = 0,
-    FIXEDPOS = 1,
+    FIXEDPOS = 1,         //位置被固定,或者平均固定,作为固定站时
     FIXEDHEIGHT = 2,
     Reserved = 3,
     FLOATCONV = 4,
     WIDELANE = 5,
     NARROWLANE = 6,
     DOPPLER_VELOCITY = 8,
-    SINGLE = 16,
-    PSRDIFF = 17,
+    SINGLE = 16,         //单点定位
+    PSRDIFF = 17,        //伪距差分定位
     WAAS = 18,
-    PROPOGATED = 19,
+    PROPOGATED = 19,     //由卡尔曼滤波传播，没有新的观测
     OMNISTAR = 20,
     L1_FLOAT = 32,
     IONOFREE_FLOAT = 33,
@@ -170,8 +170,8 @@ enum PositionType
     L1_INT = 48,
     WIDE_INT = 49,
     NARROW_INT = 50,
-    RTK_DIRECT_INS = 51,
-    INS = 52,
+    RTK_DIRECT_INS = 51, //RTK状态,RTK过滤器直接由INS过滤器初始化
+    INS = 52,            //INS计算位置校正天线
     INS_PSRSP = 53,
     INS_PSRDIFF = 54,
     INS_RTKFLOAT = 55,
