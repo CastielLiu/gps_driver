@@ -122,28 +122,29 @@ public:
 		sensor_msgs::NavSatFix sat_fix;
 		sat_fix.header.stamp = stamp;
 		sat_fix.header.frame_id = "/odom";
-
-		if (pos.position_type == NONE)
-		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX; 
-		else if ((pos.position_type == WAAS) || 
-		         (pos.position_type == OMNISTAR) ||   
-		         (pos.position_type == OMNISTAR_HP) || 
-		         (pos.position_type == OMNISTAR_XP) || 
-		         (pos.position_type == CDGPS))
-		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;//星基增强
-		else if ((pos.position_type == PSRDIFF) || 
-		         (pos.position_type == NARROW_FLOAT) ||   
-		         (pos.position_type == WIDE_INT) ||     
-		         (pos.position_type == WIDE_INT) ||     
-		         (pos.position_type == NARROW_INT) ||     
-		         (pos.position_type == RTK_DIRECT_INS) ||     
-		         (pos.position_type == INS_PSRDIFF))
-		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;//地基增强
-		 else if((pos.position_type == INS_RTKFLOAT) ||
-		         (pos.position_type == INS_RTKFIXED))
-		  sat_fix.status.status = 10; //自定义状态,RTK
-		 else 
-		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
+		sat_fix.status.status= pos.position_type;
+//		std::cout << int(pos.position_type) << std::endl;
+//		if (pos.position_type == NONE)
+//		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX; 
+//		else if ((pos.position_type == WAAS) || 
+//		         (pos.position_type == OMNISTAR) ||   
+//		         (pos.position_type == OMNISTAR_HP) || 
+//		         (pos.position_type == OMNISTAR_XP) || 
+//		         (pos.position_type == CDGPS))
+//		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;//星基增强
+//		else if ((pos.position_type == PSRDIFF) || 
+//		         (pos.position_type == NARROW_FLOAT) ||   
+//		         (pos.position_type == WIDE_INT) ||     
+//		         (pos.position_type == WIDE_INT) ||     
+//		         (pos.position_type == NARROW_INT) ||     
+//		         (pos.position_type == RTK_DIRECT_INS) ||     
+//		         (pos.position_type == INS_PSRDIFF))
+//		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;//地基增强
+//		 else if((pos.position_type == INS_RTKFLOAT) ||
+//		         (pos.position_type == INS_RTKFIXED))
+//		  sat_fix.status.status = 10; //自定义状态,RTK
+//		 else 
+//		  sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
 
 		if (pos.signals_used_mask & 0x30)
 		  sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GLONASS;
