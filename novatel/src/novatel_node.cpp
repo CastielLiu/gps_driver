@@ -533,10 +533,14 @@ public:
 		ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
-		Eigen::AngleAxisd rollAngle(deg2rad(inspvax.roll), Eigen::Vector3d::UnitX());
-		Eigen::AngleAxisd yawAngle(-deg2rad(inspvax.azimuth-90.0), Eigen::Vector3d::UnitZ());
-		Eigen::AngleAxisd pitchAngle(deg2rad(inspvax.pitch), Eigen::Vector3d::UnitY());
-		Eigen::Quaterniond q = rollAngle * yawAngle * pitchAngle;
+		double yaw = -deg2rad(inspvax.azimuth-90.0);
+		double roll = deg2rad(inspvax.roll);
+		double pitch = deg2rad(inspvax.pitch);
+		
+		Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitY());
+		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
+		Eigen::Quaterniond q = yawAngle * rollAngle* pitchAngle;
 		
 		ll2utm_msg.pose.pose.orientation.x = q.x();
 		ll2utm_msg.pose.pose.orientation.y = q.y();
@@ -545,6 +549,10 @@ public:
 		ll2utm_msg.pose.covariance[0] = deg2rad(inspvax.azimuth);
 		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
 		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
+		
+		ll2utm_msg.pose.covariance[3] = yaw;
+		ll2utm_msg.pose.covariance[4] = roll;
+		ll2utm_msg.pose.covariance[5] = pitch;
 
 		ll2utm_publisher_.publish(ll2utm_msg);
 	}
