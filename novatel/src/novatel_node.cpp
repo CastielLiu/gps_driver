@@ -514,7 +514,7 @@ public:
 		inspvax_msg.azimuth_standard_deviation = inspvax.azimuth_standard_deviation;
 		inspvax_publisher_.publish(inspvax_msg);
 	}
-	
+
 	if(ll2utm_publisher_.getNumSubscribers())
 	{
 		nav_msgs::Odometry ll2utm_msg;
@@ -553,6 +553,13 @@ public:
 		ll2utm_msg.pose.covariance[3] = yaw;
 		ll2utm_msg.pose.covariance[4] = roll;
 		ll2utm_msg.pose.covariance[5] = pitch;
+		
+		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
+		ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
+		
+		//float x_speed = inspvax.north_velocity * cos(inspvax.azimuth) + inspvax.east_velocity * sin(inspvax.azimuth) *3.6;
+		//float y_speed = inspvax.north_velocity * cos(inspvax.azimuth) + inspvax.east_velocity * sin(inspvax.azimuth) *3.6;
+		
 
 		ll2utm_publisher_.publish(ll2utm_msg);
 	}
