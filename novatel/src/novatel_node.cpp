@@ -520,6 +520,7 @@ public:
 		nav_msgs::Odometry ll2utm_msg;
 		ll2utm_msg.header.stamp = stamp;
 		ll2utm_msg.header.frame_id = "world";
+		ll2utm_msg.child_frame_id = "gps";
 		
 		geographic_msgs::GeoPoint point;
 		point.latitude = inspvax.latitude;
@@ -541,6 +542,7 @@ public:
 		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitY());
 		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
 		Eigen::Quaterniond q = yawAngle * rollAngle* pitchAngle;
+		q.normalize();
 		
 		ll2utm_msg.pose.pose.orientation.x = q.x();
 		ll2utm_msg.pose.pose.orientation.y = q.y();
