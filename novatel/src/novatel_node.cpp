@@ -502,7 +502,7 @@ public:
 		inspvax_msg.up_velocity = inspvax.up_velocity;
 		inspvax_msg.roll = inspvax.roll;
 		inspvax_msg.pitch = inspvax.pitch;
-		inspvax_msg.azimuth = inspvax.azimuth;
+		inspvax_msg.azimuth = inspvax.azimuth; //the angle between gps_x and world_x, Clockwise is positive
 		inspvax_msg.latitude_standard_deviation = inspvax.latitude_standard_deviation;
 		inspvax_msg.longitude_standard_deviation = inspvax.longitude_standard_deviation;
 		inspvax_msg.height_standard_deviation =  inspvax.height_standard_deviation;
@@ -534,7 +534,7 @@ public:
 		ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
-		double yaw = -deg2rad(inspvax.azimuth-90.0);
+		double yaw = -deg2rad(inspvax.azimuth);
 		double roll = deg2rad(inspvax.roll);
 		double pitch = deg2rad(inspvax.pitch);
 		
@@ -559,9 +559,12 @@ public:
 		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
 		ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
 		
-		//float x_speed = inspvax.north_velocity * cos(inspvax.azimuth) + inspvax.east_velocity * sin(inspvax.azimuth) *3.6;
-		//float y_speed = inspvax.north_velocity * cos(inspvax.azimuth) + inspvax.east_velocity * sin(inspvax.azimuth) *3.6;
+		float speed_yaw = atan2(inspvax.east_velocity, inspvax.north_velocity);
+		float sideslip_angle = fabs(speed_yaw - deg2rad(inspvax.azimuth));
+		float speed = sqrt(inspvax.east_velocity*inspvax.east_velocity+inspvax.north_velocity*inspvax.north_velocity);
 		
+		ll2utm_msg.twist.twist.linear.x = speed * sin(sideslip_angle);
+		ll2utm_msg.twist.twist.linear.y = speed * cos(sideslip_angle);
 
 		ll2utm_publisher_.publish(ll2utm_msg);
 	}
