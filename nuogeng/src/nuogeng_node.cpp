@@ -211,6 +211,8 @@ void Nuogeng::parseId20Pkg(const uint8_t* buffer)
 		Eigen::AngleAxisd pitchAngle(deg2rad(m_inspax.pitch), Eigen::Vector3d::UnitY());
 		Eigen::Quaterniond q = rollAngle * yawAngle * pitchAngle;
 		m_ll2utmOdom.pose.covariance[0] = m_inspax.azimuth *M_PI / 180.0;
+		m_ll2utmOdom.pose.covariance[1] = point.longitude;
+		m_ll2utmOdom.pose.covariance[2] = point.latitude;
 		
 		
 		m_ll2utmOdom.pose.pose.orientation.x = q.x();
