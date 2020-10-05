@@ -198,10 +198,12 @@ void Nuogeng::parseId20Pkg(const uint8_t* buffer)
 	geodesy::UTMPoint utm;
 	geodesy::fromMsg(point, utm);
 	
-	Eigen::AngleAxisd rollAngle(deg2rad(m_inspax.roll), Eigen::Vector3d::UnitX());
-	Eigen::AngleAxisd yawAngle(-deg2rad(m_inspax.azimuth-90.0), Eigen::Vector3d::UnitZ());
-	Eigen::AngleAxisd pitchAngle(deg2rad(m_inspax.pitch), Eigen::Vector3d::UnitY());
-	Eigen::Quaterniond quat = rollAngle * yawAngle * pitchAngle;
+	Eigen::AngleAxisd xAngle(deg2rad(m_inspax.roll), Eigen::Vector3d::UnitX());
+	Eigen::AngleAxisd yAngle(deg2rad(m_inspax.pitch), Eigen::Vector3d::UnitY());
+	Eigen::AngleAxisd zAngle(-deg2rad(m_inspax.azimuth-90.0), Eigen::Vector3d::UnitZ());
+	
+	Eigen::Quaterniond quat = xAngle * yAngle * zAngle;
+	quat.normalized();
 	
 	if(m_is_pub_ll2utm)
 	{
