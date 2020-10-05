@@ -47,22 +47,24 @@ void Nuogeng::closeSerial()
 		delete m_serial_port;
 		m_serial_port = NULL;
 	}
-		
 }
 
-bool Nuogeng::init(int argc,char** argv)
+bool Nuogeng::init()
 {
-	ros::init(argc,argv,"nuogeng_node");
 	ros::NodeHandle nh;
 	ros::NodeHandle nh_private("~");
 	
 	m_pub_id20 = nh.advertise<gps_msgs::Inspvax>(nh_private.param<std::string>("gps_topic","/gps"),1);
-	//m_pub_id31 = nh.advertise<gps_msgs::Satellites>(nh_private.param<string>("satellite_topic","/satellite"),1);
-	m_pub_ll2utm = nh.advertise<nav_msgs::Odometry>(nh_private.param<string>("odom_topic","/odom"),1);
+	m_pub_ll2utm = nh.advertise<nav_msgs::Odometry>(nh_private.param<std::string>("odom_topic","/odom"),1);
+	
+	nh_private.param<std::string>("parent_frame_id", m_parent_frame_id, "world");
+	nh_private.param<std::string>("child_frame_id", m_child_frame_id, "world");
+	
+	nh_private.param<bool>("pub_odom", m_is_pub_ll2utm, false);
+	nh_private.param<bool>("pub_tf", m_is_pub_tf, true);
 	
 	std::string port_name = nh_private.param<std::string>("port_name","/dev/ttyUSB0");
 	int baudrate = nh_private.param<int>("baudrate",115200);
-	m_is_pub_ll2utm = nh_private.param<bool>("is_ll2utm",false);
 	if(!openSerial(port_name,baudrate))
 		return false;
 	return true;
@@ -188,39 +190,60 @@ void Nuogeng::parseId20Pkg(const uint8_t* buffer)
 	
 	m_pub_id20.publish(m_inspax);
 	
+	geographic_msgs::GeoPoint point;
+	point.latitude = m_inspax.latitude;
+	point.longitude = m_inspax.longitude;
+	point.altitude = m_inspax.height;
+	
+	geodesy::UTMPoint utm;
+	geodesy::fromMsg(point, utm);
+	
+	Eigen::AngleAxisd rollAngle(deg2rad(m_inspax.roll), Eigen::Vector3d::UnitX());
+	Eigen::AngleAxisd yawAngle(-deg2rad(m_inspax.azimuth-90.0), Eigen::Vector3d::UnitZ());
+	Eigen::AngleAxisd pitchAngle(deg2rad(m_inspax.pitch), Eigen::Vector3d::UnitY());
+	Eigen::Quaterniond quat = rollAngle * yawAngle * pitchAngle;
+	
 	if(m_is_pub_ll2utm)
 	{
-		m_ll2utmOdom.header.stamp = m_inspax.header.stamp;
-		m_ll2utmOdom.header.frame_id = "world";
+		nav_msgs::Odometry odom;
 		
-		geographic_msgs::GeoPoint point;
-		point.latitude = m_inspax.latitude;
-		point.longitude = m_inspax.longitude;
-		point.altitude = m_inspax.height;
+		odom.header.stamp = m_inspax.header.stamp;
+		odom.header.frame_id = m_parent_frame_id;
+		odom.child_frame_id  = m_child_frame_id;
 		
-		geodesy::UTMPoint utm;
-		geodesy::fromMsg(point, utm);
+		odom.pose.pose.position.x = utm.easting;
+		odom.pose.pose.position.y = utm.northing;
+		odom.pose.pose.position.z = utm.altitude;
 		
-		m_ll2utmOdom.pose.pose.position.x = utm.easting;
-		m_ll2utmOdom.pose.pose.position.y = utm.northing;
-		m_ll2utmOdom.pose.pose.position.z = utm.altitude;
-		
-		
-		Eigen::AngleAxisd rollAngle(deg2rad(m_inspax.roll), Eigen::Vector3d::UnitX());
-		Eigen::AngleAxisd yawAngle(-deg2rad(m_inspax.azimuth-90.0), Eigen::Vector3d::UnitZ());
-		Eigen::AngleAxisd pitchAngle(deg2rad(m_inspax.pitch), Eigen::Vector3d::UnitY());
-		Eigen::Quaterniond q = rollAngle * yawAngle * pitchAngle;
-		m_ll2utmOdom.pose.covariance[0] = m_inspax.azimuth *M_PI / 180.0;
-		m_ll2utmOdom.pose.covariance[1] = point.longitude;
-		m_ll2utmOdom.pose.covariance[2] = point.latitude;
+		odom.pose.covariance[0] = m_inspax.azimuth *M_PI / 180.0;
+		odom.pose.covariance[1] = point.longitude;
+		odom.pose.covariance[2] = point.latitude;
 		
 		
-		m_ll2utmOdom.pose.pose.orientation.x = q.x();
-		m_ll2utmOdom.pose.pose.orientation.y = q.y();
-		m_ll2utmOdom.pose.pose.orientation.z = q.z();
-		m_ll2utmOdom.pose.pose.orientation.w = q.w();
+		odom.pose.pose.orientation.x = quat.x();
+		odom.pose.pose.orientation.y = quat.y();
+		odom.pose.pose.orientation.z = quat.z();
+		odom.pose.pose.orientation.w = quat.w();
 		
-		m_pub_ll2utm.publish(m_ll2utmOdom);
+		m_pub_ll2utm.publish(odom);
+	}
+	
+	if(m_is_pub_tf)
+	{
+		geometry_msgs::TransformStamped transformStamped;
+		transformStamped.header.stamp = ros::Time::now();
+		transformStamped.header.frame_id = m_parent_frame_id;
+		transformStamped.child_frame_id = m_child_frame_id;
+		transformStamped.transform.translation.x = utm.easting;
+		transformStamped.transform.translation.y = utm.northing;
+		transformStamped.transform.translation.z = 0.0;
+
+		transformStamped.transform.rotation.x = quat.x();
+		transformStamped.transform.rotation.y = quat.y();
+		transformStamped.transform.rotation.z = quat.z();
+		transformStamped.transform.rotation.w = quat.w();
+
+		m_tf_br.sendTransform(transformStamped);
 	}
 	
 }
@@ -261,8 +284,11 @@ void Nuogeng::stopReading()
 
 int main(int argc,char** argv)
 {
+	ros::init(argc,argv,"nuogeng_node");
+	
 	Nuogeng gps;
-	if(gps.init(argc,argv))
+	
+	if(gps.init())
 	{
 		gps.startReading();
 		ROS_INFO("%s initial ok...",ros::this_node::getName().c_str());

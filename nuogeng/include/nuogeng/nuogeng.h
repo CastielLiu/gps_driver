@@ -10,7 +10,8 @@
 #include<nav_msgs/Odometry.h>
 #include"gps_msgs/Satellite.h"
 #include"gps_msgs/Satellites.h"
-using namespace std;
+#include <tf2_ros/transform_broadcaster.h>
+
 
 #define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 
@@ -97,7 +98,7 @@ public:
 	~Nuogeng();
 	Nuogeng(const Nuogeng& obj) = delete;
 	Nuogeng& operator=(const Nuogeng& obj) = delete;
-	bool init(int argc,char** argv);
+	bool init();
 	void startReading();
 	void stopReading();
 private:
@@ -140,7 +141,10 @@ private:
 	gps_msgs::Inspvax m_inspax;
 	
 	bool m_is_pub_ll2utm;
-	nav_msgs::Odometry m_ll2utmOdom;
+	
+	bool m_is_pub_tf;
+	tf2_ros::TransformBroadcaster m_tf_br;
+	std::string m_child_frame_id, m_parent_frame_id;
 	
 	
 };
