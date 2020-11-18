@@ -534,7 +534,8 @@ public:
 		ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
-		double yaw = -deg2rad(inspvax.azimuth);
+		double yaw = -deg2rad(inspvax.azimuth-90.0);
+		if(yaw < 0) yaw += 2*M_PI;
 		double roll = deg2rad(inspvax.roll);
 		double pitch = deg2rad(inspvax.pitch);
 		
@@ -548,13 +549,9 @@ public:
 		ll2utm_msg.pose.pose.orientation.y = q.y();
 		ll2utm_msg.pose.pose.orientation.z = q.z();
 		ll2utm_msg.pose.pose.orientation.w = q.w();
-		ll2utm_msg.pose.covariance[0] = deg2rad(inspvax.azimuth);
+		ll2utm_msg.pose.covariance[0] = yaw;
 		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
 		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
-		
-		ll2utm_msg.pose.covariance[3] = yaw;
-		ll2utm_msg.pose.covariance[4] = roll;
-		ll2utm_msg.pose.covariance[5] = pitch;
 		
 		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
 		ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
