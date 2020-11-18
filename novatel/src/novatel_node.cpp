@@ -530,6 +530,7 @@ public:
 		geodesy::UTMPoint utm;
 		geodesy::fromMsg(point, utm);
 		
+    //east-north-sky
 		ll2utm_msg.pose.pose.position.x = utm.easting;
 		ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
