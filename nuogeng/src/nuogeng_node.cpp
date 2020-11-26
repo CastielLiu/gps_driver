@@ -213,14 +213,16 @@ void Nuogeng::parseId20Pkg(const uint8_t* buffer)
 		odom.header.frame_id = m_parent_frame_id;
 		odom.child_frame_id  = m_child_frame_id;
 		
+		//east-north-sky
 		odom.pose.pose.position.x = utm.easting;
 		odom.pose.pose.position.y = utm.northing;
 		odom.pose.pose.position.z = utm.altitude;
 		
-		odom.pose.covariance[0] = m_inspax.azimuth *M_PI / 180.0;
+		//yaw is the direction from east(x) ccw
+		double yaw = -deg2rad(m_inspax.azimuth-90.0);
+		odom.pose.covariance[0] = yaw;
 		odom.pose.covariance[1] = point.longitude;
 		odom.pose.covariance[2] = point.latitude;
-		
 		
 		odom.pose.pose.orientation.x = quat.x();
 		odom.pose.pose.orientation.y = quat.y();
