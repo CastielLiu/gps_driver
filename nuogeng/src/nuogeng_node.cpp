@@ -219,7 +219,9 @@ void Nuogeng::parseId20Pkg(const uint8_t* buffer)
 		odom.pose.pose.position.z = utm.altitude;
 		
 		//yaw is the direction from east(x) ccw
-		double yaw = -deg2rad(m_inspax.azimuth-90.0);
+		double yaw = 2*M_PI-deg2rad(m_inspax.azimuth-90.0);
+		while(yaw > M_PI) yaw -= 2*M_PI;
+		while(yaw <-M_PI) yaw += 2*M_PI;
 		odom.pose.covariance[0] = yaw;
 		odom.pose.covariance[1] = point.longitude;
 		odom.pose.covariance[2] = point.latitude;
