@@ -43,6 +43,8 @@ add_message_files(
         Utm.msg   #add by wendao
         Satellite.msg
         Satellites.msg
+        
+        Gpchc.msg
 )
 
 ## Generate services in the 'srv' folder

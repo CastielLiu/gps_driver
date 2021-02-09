@@ -1,0 +1,17 @@
+<!-- -->
+<launch>
+
+	<arg name="port" default="/dev/ttyUSB0"/>
+	<arg name="baudrate" default="230400"/>
+	
+	<node name="nmea_parser_node" pkg="nmea_parser" type="nmea_parser_node" output="screen">
+		<param name="port_name" value="$(arg port)"/>
+		<param name="baudrate" value="$(arg baudrate)"/>
+		
+		<param name="gpchc_topic" value="/gps/gpchc"/>
+		<param name="imu_topic" value="/gps/imu"/>
+		<param name="velocity_topic" value="/gps/vel"/>
+		<param name="navsatfix_topic" value="/gps/fix"/>
+		
+	</node>
+</launch>
