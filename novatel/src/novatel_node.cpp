@@ -531,14 +531,19 @@ public:
 		geodesy::fromMsg(point, utm);
 		
     //east-north-sky
-		ll2utm_msg.pose.pose.position.x = utm.easting;
-		ll2utm_msg.pose.pose.position.y = utm.northing;
+		//ll2utm_msg.pose.pose.position.x = utm.easting;
+		//ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
 		double yaw = -deg2rad(inspvax.azimuth-90.0);
 		if(yaw < 0) yaw += 2*M_PI;
 		double roll = deg2rad(inspvax.roll);
 		double pitch = deg2rad(inspvax.pitch);
+		
+		double delta_x = location_expected_x_ - location_original_x_;
+		double delta_y = location_expected_y_ - location_original_y_;
+		ll2utm_msg.pose.pose.position.x = utm.easting + delta_x * cos(yaw) - delta_y * sin(yaw);
+		ll2utm_msg.pose.pose.position.y = utm.northing + delta_x * sin(yaw) + delta_y * cos(yaw);
 		
 		Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
 		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitY());
@@ -804,6 +809,12 @@ protected:
 	is_ll2utm_ = nh_.param<bool>("is_lltoutm",false);
 	ll2utm_topic_ = nh_.param<std::string>("ll2utm_topic","ll2utm_odom");
 	
+// add by shangjie
+	location_original_x_ = nh_.param<double>("location_original_x",-0.909);
+	location_original_y_ = nh_.param<double>("location_original_y",-0.005);
+	location_expected_x_ = nh_.param<double>("location_expected_x",0.0);
+	location_expected_y_ = nh_.param<double>("location_expected_y",0.0);
+	
     return true;
   }
 
@@ -859,6 +870,11 @@ protected:
   UtmPosition cur_utm_bestpos_;
   
   bool is_ll2utm_;
+  
+  double location_original_x_;
+  double location_original_y_;
+  double location_expected_x_;
+  double location_expected_y_;
 
   // holders for data common to multiple messages
   // double cur_psr_lla_[3];

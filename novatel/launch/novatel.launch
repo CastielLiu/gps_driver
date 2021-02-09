@@ -19,6 +19,11 @@
 		<!-- <param name="configure_port" value="COM2,9600,RTCM,NONE" /> -->
 		<!-- <param name="log_commands" value="BESTUTMB ONTIME 1.0; BESTVELB ONTIME 1.0" /> -->
 		
+		<param name="location_original_x" value="-0.909"/>
+		<param name="location_original_y" value="-0.005"/>
+		<param name="location_expected_x" value="0.0"/>
+		<param name="location_expected_y" value="0.0"/>
+		
 	</node>
 	
 	<group if="$(arg IMU)">
