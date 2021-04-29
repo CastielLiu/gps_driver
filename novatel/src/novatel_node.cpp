@@ -558,6 +558,9 @@ public:
 		ll2utm_msg.pose.covariance[0] = yaw;
 		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
 		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
+
+    ll2utm_msg.pose.covariance[3] = -1; //卫星数量
+    ll2utm_msg.pose.covariance[4] = -1; //定位状态
 		
 		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
 		ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
