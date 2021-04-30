@@ -72,6 +72,8 @@ static double degrees_square_to_radians_square = degrees_to_radians*degrees_to_r
 
 static double sigma_v = 0.05; // velocity std dev in m/s
 
+int g_solvedSateNum = -1;
+
 // ROS Node class
 class NovatelNode {
 public:
@@ -559,7 +561,7 @@ public:
 		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
 		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
 
-    ll2utm_msg.pose.covariance[3] = -1; //卫星数量
+    ll2utm_msg.pose.covariance[3] = g_solvedSateNum; //卫星数量
     ll2utm_msg.pose.covariance[4] = -1; //定位状态
 		
 		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
@@ -579,14 +581,16 @@ public:
   
   void BestGnssHandler(BestGnss &bestgnss,double timestamp)
   {
-	gps_msgs::Inspvax gnss_msg;
-	gnss_msg.header.stamp = ros::Time::now();
-	gnss_msg.header.frame_id = "gps";
-	gnss_msg.latitude = bestgnss.latitude;
-	gnss_msg.longitude = bestgnss.longitude;
-	gnss_msg.height = bestgnss.height;
-	
-	bestgnss_publisher_.publish(gnss_msg);
+    gps_msgs::Inspvax gnss_msg;
+    gnss_msg.header.stamp = ros::Time::now();
+    gnss_msg.header.frame_id = "gps";
+    gnss_msg.latitude = bestgnss.latitude;
+    gnss_msg.longitude = bestgnss.longitude;
+    gnss_msg.height = bestgnss.height;
+
+    g_solvedSateNum = bestgnss.solved_sate;
+    
+    bestgnss_publisher_.publish(gnss_msg);
  }
 	
   
@@ -632,7 +636,7 @@ public:
     if (!this->getParameters())
       return;
 	
-	this->ll2utm_publisher_ =  nh_.advertise<nav_msgs::Odometry>(ll2utm_topic_,0);
+	  this->ll2utm_publisher_ =  nh_.advertise<nav_msgs::Odometry>(ll2utm_topic_,0);
     this->bestutm_publisher_ = nh_.advertise<nav_msgs::Odometry>(bestutm_topic_,0);
     this->nav_sat_fix_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>(nav_sat_fix_topic_,0);
     // ! FIXME - only advertise ephem/range if going to publish it.
@@ -809,12 +813,11 @@ protected:
 	nh_.param("raw_imu_topic",raw_imu_topic_,std::string("/raw_imu"));
 	ROS_INFO_STREAM(name_ << ": GPS rawImu Topic: " << raw_imu_topic_);
 	
-	is_ll2utm_ = nh_.param<bool>("is_lltoutm",false);
 	ll2utm_topic_ = nh_.param<std::string>("ll2utm_topic","ll2utm_odom");
 	
 // add by shangjie
-	location_original_x_ = nh_.param<double>("location_original_x",-0.909);
-	location_original_y_ = nh_.param<double>("location_original_y",-0.005);
+	location_original_x_ = nh_.param<double>("location_original_x",0.0);
+	location_original_y_ = nh_.param<double>("location_original_y",0.0);
 	location_expected_x_ = nh_.param<double>("location_expected_x",0.0);
 	location_expected_y_ = nh_.param<double>("location_expected_y",0.0);
 	
@@ -871,8 +874,6 @@ protected:
   InsCovariance cur_ins_cov_;
   Position cur_psrpos_;
   UtmPosition cur_utm_bestpos_;
-  
-  bool is_ll2utm_;
   
   double location_original_x_;
   double location_original_y_;

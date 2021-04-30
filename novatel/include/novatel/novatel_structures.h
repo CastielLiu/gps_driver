@@ -657,8 +657,19 @@ struct BestGnss
     double longitude;
     double height;
     float undulation;
-    
-    float reserve[10];
+    uint32_t datum_id;
+    float lat_sigma;
+    float lon_sigma;
+    float height_sigma;
+    uint8_t stn_id[4];
+    float diff_age;
+    float sol_age;
+    uint8_t track_sate;
+    uint8_t solved_sate;
+    uint8_t solved_l1_sate;
+    uint8_t solved_multi_sate;
+     
+    uint8_t reserve1[4];
     uint8_t crc[4];
 });
 
