@@ -12,7 +12,7 @@
 		<param name="inspvax_topic" value = "/gps"/>
 		
 		<param name="is_lltoutm"   value="true"/>
-		<param name="ll2utm_topic" value="/ll2utm_odom"/>
+		<param name="ll2utm_topic" value="/gps_odom"/>
 		
 		<param name="log_commands" value="inspvaxb ontime 0.05; bestutmb ontime 0.5" />
 		
