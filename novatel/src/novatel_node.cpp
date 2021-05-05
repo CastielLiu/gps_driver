@@ -517,6 +517,7 @@ public:
 		inspvax_publisher_.publish(inspvax_msg);
 	}
 
+  // novatel_base 坐标系xyz 右-前-上
 	if(ll2utm_publisher_.getNumSubscribers())
 	{
 		nav_msgs::Odometry ll2utm_msg;
@@ -537,26 +538,35 @@ public:
 		//ll2utm_msg.pose.pose.position.y = utm.northing;
 		ll2utm_msg.pose.pose.position.z = utm.altitude;
 		
-		double yaw = -deg2rad(inspvax.azimuth-90.0);
-		if(yaw < 0) yaw += 2*M_PI;
-		double roll = deg2rad(inspvax.roll);
-		double pitch = deg2rad(inspvax.pitch);
-		
+
+    //经测试,车头高车尾低时，inspvax.pitch为正 -> 右方为y
+    //      左侧低右侧高时，inspvax.roll为负  -> 前方为x
+    //      顺时针旋转时，  inspvax.yaw增大   -> 下方为z
+    //      前方朝北时，inspvax.yaw为0
+    //因此，gps_base系，前方为x，右侧为y，下方为z
+
+    //由于在此驱动程序中使用UTM(东北天)作为直角定位坐标系，所以需要将姿态角也与此系保持一致
+    double roll  = deg2rad(inspvax.roll);
+    double pitch = deg2rad(-inspvax.pitch);
+    double yaw   = deg2rad(-inspvax.azimuth)+M_PI_2;
+
 		double delta_x = location_expected_x_ - location_original_x_;
 		double delta_y = location_expected_y_ - location_original_y_;
 		ll2utm_msg.pose.pose.position.x = utm.easting + delta_x * cos(yaw) - delta_y * sin(yaw);
 		ll2utm_msg.pose.pose.position.y = utm.northing + delta_x * sin(yaw) + delta_y * cos(yaw);
-		
-		Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
-		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitY());
-		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
-		Eigen::Quaterniond q = yawAngle * rollAngle* pitchAngle;
+    
+		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+
+		Eigen::Quaterniond q = yawAngle* pitchAngle * rollAngle;
 		q.normalize();
 		
 		ll2utm_msg.pose.pose.orientation.x = q.x();
 		ll2utm_msg.pose.pose.orientation.y = q.y();
 		ll2utm_msg.pose.pose.orientation.z = q.z();
 		ll2utm_msg.pose.pose.orientation.w = q.w();
+
 		ll2utm_msg.pose.covariance[0] = yaw;
 		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
 		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
