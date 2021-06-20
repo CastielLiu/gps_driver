@@ -173,9 +173,9 @@ enum PositionType
     RTK_DIRECT_INS = 51, //RTK状态,RTK过滤器直接由INS过滤器初始化
     INS = 52,            //INS计算位置校正天线
     INS_PSRSP = 53,
-    INS_PSRDIFF = 54,
-    INS_RTKFLOAT = 55,
-    INS_RTKFIXED = 56,
+    INS_PSRDIFF = 54,    //伪距差分
+    INS_RTKFLOAT = 55,   //浮点解
+    INS_RTKFIXED = 56,   //固定解
     OMNISTAR_HP = 64,
 	OMNISTAR_XP = 65,
 	CDGPS = 66,

@@ -72,7 +72,7 @@ static double degrees_square_to_radians_square = degrees_to_radians*degrees_to_r
 
 static double sigma_v = 0.05; // velocity std dev in m/s
 
-int g_solvedSateNum = -1;
+int g_solvedSateNum = -1;     //参与位置解算的卫星数量
 
 // ROS Node class
 class NovatelNode {
@@ -489,106 +489,125 @@ public:
   
   void InspvaxHandler(Inspvax &inspvax,double timestamp)
   {
-	ros::Time stamp = ros::Time::now();
-	if(inspvax_publisher_.getNumSubscribers())
-	{
-		gps_msgs::Inspvax inspvax_msg;
-		inspvax_msg.header.stamp = stamp;
-		inspvax_msg.header.frame_id = "gps";
-		inspvax_msg.latitude = inspvax.latitude;
-		inspvax_msg.longitude = inspvax.longitude;
-		inspvax_msg.height = inspvax.height;
-		inspvax_msg.undulation = inspvax.undulation;
-		inspvax_msg.north_velocity = inspvax.north_velocity ;
-		inspvax_msg.east_velocity = inspvax.east_velocity ;
-		inspvax_msg.up_velocity = inspvax.up_velocity;
-		inspvax_msg.roll = inspvax.roll;
-		inspvax_msg.pitch = inspvax.pitch;
-		inspvax_msg.azimuth = inspvax.azimuth; //the angle between gps_x and world_x, Clockwise is positive
-		inspvax_msg.latitude_standard_deviation = inspvax.latitude_standard_deviation;
-		inspvax_msg.longitude_standard_deviation = inspvax.longitude_standard_deviation;
-		inspvax_msg.height_standard_deviation =  inspvax.height_standard_deviation;
-		inspvax_msg.northing_standard_deviation = inspvax.northing_standard_deviation;
-		inspvax_msg.easting_standard_deviation = inspvax.easting_standard_deviation;
-		inspvax_msg.uping_standard_deviation = inspvax.uping_standard_deviation;
-		inspvax_msg.roll_standard_deviation = inspvax.roll_standard_deviation;
-		inspvax_msg.pitch_standard_deviation =inspvax.pitch_standard_deviation ;
-		inspvax_msg.azimuth_standard_deviation = inspvax.azimuth_standard_deviation;
-		inspvax_publisher_.publish(inspvax_msg);
-	}
+    ros::Time stamp = ros::Time::now();
+    int position_type = 0;
 
-  // novatel_base 坐标系xyz 右-前-上
-	if(ll2utm_publisher_.getNumSubscribers())
-	{
-		nav_msgs::Odometry ll2utm_msg;
-		ll2utm_msg.header.stamp = stamp;
-		ll2utm_msg.header.frame_id = "world";
-		ll2utm_msg.child_frame_id = "gps";
-		
-		geographic_msgs::GeoPoint point;
-		point.latitude = inspvax.latitude;
-		point.longitude = inspvax.longitude;
-		point.altitude = inspvax.height;
-		
-		geodesy::UTMPoint utm;
-		geodesy::fromMsg(point, utm);
-		
-    //east-north-sky
-		//ll2utm_msg.pose.pose.position.x = utm.easting;
-		//ll2utm_msg.pose.pose.position.y = utm.northing;
-		ll2utm_msg.pose.pose.position.z = utm.altitude;
-		
+    if(inspvax_publisher_.getNumSubscribers())
+    {
+      gps_msgs::Inspvax inspvax_msg;
+      inspvax_msg.header.stamp = stamp;
+      inspvax_msg.header.frame_id = "gps";
+      inspvax_msg.solution_status = inspvax.solution_status;
+      inspvax_msg.position_type = inspvax.position_type;
+      inspvax_msg.latitude = inspvax.latitude;
+      inspvax_msg.longitude = inspvax.longitude;
+      inspvax_msg.height = inspvax.height;
+      inspvax_msg.undulation = inspvax.undulation;
+      inspvax_msg.north_velocity = inspvax.north_velocity ;
+      inspvax_msg.east_velocity = inspvax.east_velocity ;
+      inspvax_msg.up_velocity = inspvax.up_velocity;
+      inspvax_msg.roll = inspvax.roll;
+      inspvax_msg.pitch = inspvax.pitch;
+      inspvax_msg.azimuth = inspvax.azimuth; //the angle between gps_x and world_x, Clockwise is positive
+      inspvax_msg.latitude_standard_deviation = inspvax.latitude_standard_deviation;
+      inspvax_msg.longitude_standard_deviation = inspvax.longitude_standard_deviation;
+      inspvax_msg.height_standard_deviation =  inspvax.height_standard_deviation;
+      inspvax_msg.northing_standard_deviation = inspvax.northing_standard_deviation;
+      inspvax_msg.easting_standard_deviation = inspvax.easting_standard_deviation;
+      inspvax_msg.uping_standard_deviation = inspvax.uping_standard_deviation;
+      inspvax_msg.roll_standard_deviation = inspvax.roll_standard_deviation;
+      inspvax_msg.pitch_standard_deviation =inspvax.pitch_standard_deviation ;
+      inspvax_msg.azimuth_standard_deviation = inspvax.azimuth_standard_deviation;
+      inspvax_publisher_.publish(inspvax_msg);
+    }
 
-    //经测试,车头高车尾低时，inspvax.pitch为正 -> 右方为y
-    //      左侧低右侧高时，inspvax.roll为负  -> 前方为x
-    //      顺时针旋转时，  inspvax.yaw增大   -> 下方为z
-    //      前方朝北时，inspvax.yaw为0
-    //因此，gps_base系，前方为x，右侧为y，下方为z
+    if(inspvax.position_type == SINGLE || inspvax.position_type == INS_PSRSP)
+      position_type = 1; //单点定位
+    else if(inspvax.position_type == PSRDIFF || inspvax.position_type == INS_PSRDIFF)
+      position_type = 2; //伪距差分
+    else if(inspvax.position_type == INS_RTKFLOAT)
+      position_type = 5; //浮点解
+    else if(inspvax.position_type == INS_RTKFIXED)
+      position_type = 4; //固定解
+    else if(inspvax.position_type == WAAS)
+      position_type = 9; //WAAS差分
+    else if(inspvax.position_type == PROPOGATED || inspvax.position_type == NONE)
+      position_type = 3; //无效PPS
+    else
+      position_type = 0; //初始化
 
-    //由于在此驱动程序中使用UTM(东北天)作为直角定位坐标系，所以需要将姿态角也与此系保持一致
-    double roll  = deg2rad(inspvax.roll);
-    double pitch = deg2rad(-inspvax.pitch);
-    double yaw   = deg2rad(-inspvax.azimuth)+M_PI_2;
+    // novatel_base 坐标系xyz 右-前-上
+    if(ll2utm_publisher_.getNumSubscribers())
+    {
+      nav_msgs::Odometry ll2utm_msg;
+      ll2utm_msg.header.stamp = stamp;
+      ll2utm_msg.header.frame_id = "world";
+      ll2utm_msg.child_frame_id = "gps";
+      
+      geographic_msgs::GeoPoint point;
+      point.latitude = inspvax.latitude;
+      point.longitude = inspvax.longitude;
+      point.altitude = inspvax.height;
+      
+      geodesy::UTMPoint utm;
+      geodesy::fromMsg(point, utm);
+      
+      //east-north-sky
+      //ll2utm_msg.pose.pose.position.x = utm.easting;
+      //ll2utm_msg.pose.pose.position.y = utm.northing;
+      ll2utm_msg.pose.pose.position.z = utm.altitude;
+      
+      //经测试,车头高车尾低时，inspvax.pitch为正 -> 右方为y
+      //      左侧低右侧高时，inspvax.roll为负  -> 前方为x
+      //      顺时针旋转时，  inspvax.yaw增大   -> 下方为z
+      //      前方朝北时，inspvax.yaw为0
+      //因此，gps_base系，前方为x，右侧为y，下方为z
 
-		double delta_x = location_expected_x_ - location_original_x_;
-		double delta_y = location_expected_y_ - location_original_y_;
-		ll2utm_msg.pose.pose.position.x = utm.easting + delta_x * cos(yaw) - delta_y * sin(yaw);
-		ll2utm_msg.pose.pose.position.y = utm.northing + delta_x * sin(yaw) + delta_y * cos(yaw);
-    
-		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+      //由于在此驱动程序中使用UTM(东北天)作为直角定位坐标系，所以需要将姿态角也与此系保持一致
+      double roll  = deg2rad(inspvax.roll);
+      double pitch = deg2rad(-inspvax.pitch);
+      double yaw   = deg2rad(-inspvax.azimuth)+M_PI_2;
 
-		Eigen::Quaterniond q = yawAngle* pitchAngle * rollAngle;
-		q.normalize();
-		
-		ll2utm_msg.pose.pose.orientation.x = q.x();
-		ll2utm_msg.pose.pose.orientation.y = q.y();
-		ll2utm_msg.pose.pose.orientation.z = q.z();
-		ll2utm_msg.pose.pose.orientation.w = q.w();
+      double delta_x = location_expected_x_ - location_original_x_;
+      double delta_y = location_expected_y_ - location_original_y_;
+      ll2utm_msg.pose.pose.position.x = utm.easting + delta_x * cos(yaw) - delta_y * sin(yaw);
+      ll2utm_msg.pose.pose.position.y = utm.northing + delta_x * sin(yaw) + delta_y * cos(yaw);
+      
+      Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+      Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
 
-		ll2utm_msg.pose.covariance[0] = yaw;
-		ll2utm_msg.pose.covariance[1] = inspvax.longitude;
-		ll2utm_msg.pose.covariance[2] = inspvax.latitude;
+      Eigen::Quaterniond q = yawAngle* pitchAngle * rollAngle;
+      q.normalize();
+      
+      ll2utm_msg.pose.pose.orientation.x = q.x();
+      ll2utm_msg.pose.pose.orientation.y = q.y();
+      ll2utm_msg.pose.pose.orientation.z = q.z();
+      ll2utm_msg.pose.pose.orientation.w = q.w();
 
-    ll2utm_msg.pose.covariance[3] = g_solvedSateNum; //卫星数量
-    ll2utm_msg.pose.covariance[4] = -1; //定位状态
-		
-		ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
-		ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
-		
-		float speed_yaw = atan2(inspvax.east_velocity, inspvax.north_velocity);
-		float sideslip_angle = fabs(speed_yaw - deg2rad(inspvax.azimuth));
-		float speed = sqrt(inspvax.east_velocity*inspvax.east_velocity+inspvax.north_velocity*inspvax.north_velocity);
-		
-		ll2utm_msg.twist.twist.linear.x = speed * sin(sideslip_angle);
-		ll2utm_msg.twist.twist.linear.y = speed * cos(sideslip_angle);
+      ll2utm_msg.pose.covariance[0] = yaw;
+      ll2utm_msg.pose.covariance[1] = inspvax.longitude;
+      ll2utm_msg.pose.covariance[2] = inspvax.latitude;
 
-		ll2utm_publisher_.publish(ll2utm_msg);
-	}
+      ll2utm_msg.pose.covariance[3] = g_solvedSateNum; //卫星数量
+      ll2utm_msg.pose.covariance[4] = position_type; //定位状态
+      
+      ll2utm_msg.pose.covariance[6] = inspvax.north_velocity;
+      ll2utm_msg.pose.covariance[7] = inspvax.east_velocity;
+      
+      float speed_yaw = atan2(inspvax.east_velocity, inspvax.north_velocity);
+      float sideslip_angle = fabs(speed_yaw - deg2rad(inspvax.azimuth));
+      float speed = sqrt(inspvax.east_velocity*inspvax.east_velocity+inspvax.north_velocity*inspvax.north_velocity);
+      
+      ll2utm_msg.twist.twist.linear.x = speed * sin(sideslip_angle);
+      ll2utm_msg.twist.twist.linear.y = speed * cos(sideslip_angle);
+
+      ll2utm_publisher_.publish(ll2utm_msg);
+    }
 	
   }
   
+  //bessgnss ,纯位导信息, 
   void BestGnssHandler(BestGnss &bestgnss,double timestamp)
   {
     gps_msgs::Inspvax gnss_msg;
@@ -599,7 +618,6 @@ public:
     gnss_msg.height = bestgnss.height;
 
     g_solvedSateNum = bestgnss.solved_sate;
-    
     bestgnss_publisher_.publish(gnss_msg);
  }
 	

@@ -12,10 +12,14 @@
 		<param name="bestutm_topic" value="/best_utm" />
 		<param name="inspvax_topic" value = "/gps"/>
 		
-		<param name="is_lltoutm"   value="true"/>
 		<param name="ll2utm_topic" value="/gps_odom"/>
 		
-		<param name="log_commands" value="inspvaxb ontime 0.05; bestutmb ontime 0.5; bestgnssposb ontime 1" />
+
+		<!--inspvaxb ontime 0.05  组合导航数据  -->
+		<!--bestgnssposb ontime 1 纯位导信息，用于获取参与解算的卫星数量 -->
+		<!-- -->
+		
+		<param name="log_commands" value="inspvaxb ontime 0.05; Large residuals make position unreliable ontime 0.5; bestgnssposb ontime 1" />
 		
 		<!-- <param name="configure_port" value="COM2,9600,RTCM,NONE" /> -->
 		<!-- <param name="log_commands" value="BESTUTMB ONTIME 1.0; BESTVELB ONTIME 1.0" /> -->

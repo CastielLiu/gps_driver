@@ -1290,28 +1290,26 @@ void Novatel::ParseBinary(unsigned char *message, size_t length, BINARY_LOG_TYPE
             if (ins_position_velocity_attitude_short_callback_)
             	ins_position_velocity_attitude_short_callback_(ins_pva_short, read_timestamp_);
             break;
-        //add by wendao  begin
+        //+ add by wendao 
         case INSPVAX_LOG_TYPE:
             Inspvax inspvax;
             memcpy(&inspvax, message, sizeof(inspvax));
             if (inspvax_callback_)
             	inspvax_callback_(inspvax, read_timestamp_);
             break;
-        case BESTGNSSPOS_LOG_TYPE:
+        case BESTGNSSPOS_LOG_TYPE: //纯位导信息
         	BestGnss best_gnss;
         	memcpy(&best_gnss, message, sizeof(best_gnss));
         	if (bestgnss_callback_)
             	bestgnss_callback_(best_gnss, read_timestamp_);
             break;
-            
-        	
         case CORRIMUDATAS_LOG_TYPE:
         	CorrImuShort corr_imu;
         	memcpy(&corr_imu,message,sizeof(corr_imu));
         	if(corrImu_short_callback_)
         		corrImu_short_callback_(corr_imu,read_timestamp_);
         	break;
-        //end	
+        //- add by wendao 
             
         case VEHICLEBODYROTATION_LOG_TYPE:
             VehicleBodyRotation vehicle_body_rotation;

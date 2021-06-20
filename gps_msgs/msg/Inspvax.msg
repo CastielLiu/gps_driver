@@ -1,5 +1,7 @@
 std_msgs/Header header
 
+int8   solution_status
+int8   position_type
 float64 latitude
 float64 longitude
 float64 height
