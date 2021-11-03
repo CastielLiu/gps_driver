@@ -6,8 +6,8 @@
 2. pose.pose.orientation   姿态四元数(ENU东北天)
 3. twist.twist.linear      线速度(xyz-右前上)
 4. pose.covariance[0]      航向角(rad)-ENU东北天/东向为0/逆时针为正
-5. pose.covariance[1]      经度(deg)
-6. pose.covariance[2]      纬度(deg)
+5. pose.covariance[1]      经度lng(deg)
+6. pose.covariance[2]      纬度lat(deg)
 7. pose.covariance[3]      卫星个数，当驱动无法获取卫星个数时，置该字段为-1(未知)
 8. pose.covariance[4]      当前定位状态-按照GPGGA第6字段编码方式:
     0初始化， 1单点定位(非差分)， 2伪距差分(分米级定位)， 3无效PPS， 4固定解(差分)， 5浮点解(差分)，
